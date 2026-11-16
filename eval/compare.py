@@ -8,6 +8,15 @@ from data.generate import features_from_dataframe, row_to_scenario
 from model.codec import decode_design
 from sim.delay_model import evaluate
 
+# Config
+CONSIDER_FAST_AFTER = 60    # Km/h, what is considered fast
+REPORT_VALUES = {
+    1: ("First-choice plan unusable in",    "fallback"),
+    2: ("Lanes changed to fit budget in",   "lanes_repaired"),
+    3: ("Greens fixed in",                  "greens_repaired"),
+    4: ("Final design illegal in",          "legal_ai")
+}
+
 # -- METHODS --
 def evaluate_ai(dataframe: pandas.DataFrame, predictor) -> pandas.DataFrame:
     out = predictor(features_from_dataframe(dataframe))
@@ -70,5 +79,36 @@ def summarize(dataframe: pandas.DataFrame, ai: pandas.DataFrame) -> pandas.DataF
             "AI within 10% of opt (%)": 100 * ((s["obj_ai"] <= 1.10 * s["objective_opt"])).mean(),
             "AI beats Webster (%)":     100 * (s["delay_ai"] < s["delay_webster"]).mean(),
             "Webster legal (%)":        100 * s["webster_legal"].mean(),
-            # TODO: ADD REST
+            "plan correct (%)":         100 * (s["plan_ai"] == s["plan"]).mean()
         })
+
+    return pandas.DataFrame(rows).set_index("subset")
+
+def report(dataframe: pandas.DataFrame, predictor, name: str = "AI", save_to: str | None = None) -> pandas.DataFrame:
+    ai = evaluate_ai(dataframe, predictor)
+    table = summarize(dataframe, ai)
+
+    print(f"\n <REPORT: {name}: {len(dataframe)} held-out scenarios>")
+    print(table.round(1).to_string())
+    print("[REPAIR STATS]:")
+    for index, (name, value_key) in REPORT_VALUES.items():
+        print(f"\t{name}: {ai[value_key].mean():.1%}")
+
+    if save_to:
+        table.round(2).to_csv(save_to)
+        print(f"Saved to {save_to}")
+
+    return table
+
+if __name__ == "__main__":
+    from model.model import TorchPredictor
+
+    arg_parser = argparse.ArgumentParser()
+    arg_parser.add_argument("--csv", default="data/dataset.csv")
+    arg_parser.add_argument("--ckpt", default="model/checkpoint.pt")
+    arg_parser.add_argument("--out", default="eval/result.csv")
+
+    args = arg_parser.parse_args()
+    data = pandas.read_csv(args.csv)
+    pred = TorchPredictor.load(args.ckpt)
+    report(data.iloc[pred.split["test"]], pred, "neural network", args.out)
