@@ -132,19 +132,20 @@ def build_scenario(scenario: Scenario, design: Design, states: dict | None = Non
         "outline":  None
     })
 
+    # Median cross strip pattern
     for a in active:
         if fill[a] > 0:
             w = fill[a] * lane_width
             rect(a, 0, w, v0[a], edge, COLORS["FILLER"])
-            v = v0[a] + 2
+            v = v0[a]
 
             while v + w < edge:
                 line(a, [(1, v), (w - 1, v + w - 2)], COLORS["HATCH"], 1)
-                v += 11
+                v += 10
 
     # Lane markings & Zebra crossings
     for a in active:
-        sv = v0[a] + (14 if scenario.pedestrian else 3)     # Stop-line distance
+        sv = v0[a] + (14 if scenario.pedestrian else 0) # Stop-line distance
         if scenario.pedestrian:
             u = -n_in[a] * lane_width
             while u < n_out[a] * lane_width:
@@ -153,8 +154,10 @@ def build_scenario(scenario: Scenario, design: Design, states: dict | None = Non
 
         line(a, [(0, sv), (0, edge)], COLORS["YELLOW"], 2) # Centre line
         if fill[a] > 0:
-            line(a, [(fill[a] * lane_width, v0[a]), (fill[a] * lane_width, edge)], COLORS["YELLOW"], 2)
+            line(a, [(fill[a] * lane_width, sv), (fill[a] * lane_width, edge)], COLORS["YELLOW"], 2)    # Secondary line, to draw out median
+            line(a, [(0, sv), (fill[a] * lane_width, sv)], COLORS["YELLOW"], 2)                         # Cap (line)
 
+        # Dotted lines to seperate lanes
         for index in range(1, n_in[a]):
             v = sv + 8
             while v < edge - 4:

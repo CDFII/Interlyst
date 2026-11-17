@@ -55,7 +55,7 @@ def design_summary(scenario: Scenario, design: Design, result: Result) -> list:
     ]
 
     for phase, green in enumerate(design.greens):
-        lines.append(f"\tPhase {phase + 1}: {green:.0f}s green - {phase_label(scenario.layout, design.plan, phase)}")
+        lines.append(f" | Phase {phase + 1}: {green:.0f}s green - {phase_label(scenario.layout, design.plan, phase)}")
 
     for a in ACTIVE[scenario.layout]:
         left = f"{design.left_lanes[a]} left + " if design.left_lanes[a] else "no left lane, "

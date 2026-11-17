@@ -40,6 +40,7 @@ class App:
     def __init__(self, root: tkinter.Tk, recommender: Recommender | None = None):
         self.root = root
         root.title(APP_NAME)
+        root.iconbitmap("icon.ico")
 
         # App properties
         self.engine = recommender or Recommender()
@@ -102,7 +103,7 @@ class App:
             ttk.Label(left, text=f"{approach} approach").grid(row=7 + index1, column=0, sticky="w", padx=6)
 
             for index2 in range(3):
-                entry = ttk.Entry(left, width=6, justify="right", textvariable=self.flow_vars[(index1, index2)])
+                entry = ttk.Entry(left, width=8, justify="center", textvariable=self.flow_vars[(index1, index2)])
                 entry.grid(row=7 + index1, column=1 + index2, padx=2, pady=1)
                 self.flow_entries[(index1, index2)] = entry
 
@@ -126,7 +127,7 @@ class App:
                 row=14 + index, column=0, columnspan=4, sticky="w", padx=6
             )
 
-        ttk.Button(left, text="Recommended design", command=self.recommend).grid(row=18, column=0, columnspan=4, sticky="we", padx=6, pady=8)
+        ttk.Button(left, text="Recommend design", command=self.recommend).grid(row=18, column=0, columnspan=4, sticky="we", padx=6, pady=8)
 
         self.status = ttk.Label(left, text="", wraplength=280, foreground="#b00020")
         self.status.grid(row=20, column=0, columnspan=4, sticky="w", padx=6)
@@ -291,7 +292,7 @@ class App:
         result = recommendation.result
         self.score_label.configure(text=f"{recommendation.score}/100", foreground=SCORE_COLORS.get(result.los, "#000000"))
         self.stats_label.configure(
-            text=f"Level of service: {result.los} | avarage delay: {result.avarage_delay:.1f} s/veh\nWorst lane group at: {result.max_x:.2f}x capacity | cycle: {result.cycle:.0f}s | {result.total_lanes} lanes"
+            text=f"Level of service: {result.los} | Avarage delay: {result.avarage_delay:.1f} s/veh\nWorst lane group at: {result.max_x:.2f}x capacity\nCycle: {result.cycle:.0f}s | {result.total_lanes} lanes"
         )
 
         self.tree.delete(*self.tree.get_children())

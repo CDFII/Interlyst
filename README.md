@@ -1,7 +1,12 @@
 # Interlyst
-Intersection Flow Optimization Model
+<img src="icon.png" width=60 height=60>
 
-Quick start:
+Small Python based editor for designing intersections (3-leg or 4-leg), with features:
+* Extensive result summary and phase viewer
+* Ability to train custom AI model to design intersection
+* Easy interface to input data
+
+## Quick start
 ```
 # 1. Install dependacies
 pip install -r requirements.txt
@@ -17,7 +22,7 @@ python -m model.train --csv output/dataset.csv --epochs 150
 python -m eval.compare --csv output/dataset.csv --ckpt output/checkpoint.pt
 ```
 
-You can launch visual editor with or without training the model, but expect worse results in optimizer:
+You can launch visual editor with or without training the model, but expect worse results with optimizer:
 ```
 python -m interface.app
 ```
