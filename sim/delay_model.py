@@ -101,30 +101,30 @@ def _all(*approaches):
 
 PLANS = {
     "3leg": [
-        [_all(0, 2), _all(1, 3)]                                                                        # 0: (NS, EW)                   Two phases, permitted lefts
+        [_all(1, 3), _all(2)],                                                                          # 0: (E+W, S)                   Main road together, then stem
+        [[(1, "L"), (1, "TR")], [(1, "TR"), (3, "TR")], _all(2)],                                       # 1: (E-L+E-TR, E-TR+W-TR, S)   Protected E-left, then main road, then stem
+        [_all(1), _all(3), _all(2)]                                                                     # 2: (E, W, S)                  Split phasing
+    ],
+    "4leg": [
+        [_all(0, 2), _all(1, 3)],                                                                       # 0: (NS, EW)                   Two phases, permitted lefts
         [[(0, "L"), (2, "L")], [(0, "TR"), (2, "TR")], _all(1, 3)],                                     # 1: (NS-L, NS-TR, EW)          Protected NS lefts, permitted EW lefts
         [_all(0, 2), [(1, "L"), (3, "L")], [(1, "TR"), (3, "TR")]],                                     # 2: (NS, EW-L, EW_TR)          Permitted NS lefts, protected EW lefts
         [[(0, "L"), (2, "L")], [(0, "TR"), (2, "TR")], [(1, "L"), (3, "L")], [(1, "TR"), (3, "TR")]],   # 3: (NS-L, NS-TR, EW-L, EW-TR) Fully protectedlefts
         [_all(0), _all(1), _all(2), _all(3)]                                                            # 4: (N, E, S, W)               Split phasing, one approach at a time
-    ],
-    "4leg": [
-        [_all(1, 3), _all(2)],                                                                          # 0: (E+W, S)                   Main road together, then stem
-        [[(1, "L"), (1, "TR")], [(1, "TR"), (3, "TR")], _all(2)],                                       # 1: (E-L+E-TR, E-TR+W-TR, S)   Protected E-left, then main road, then stem
-        [_all(1), _all(3), _all(2)]                                                                     # 2: (E, W, S)                  Split phasing
     ]
 }
 PLAN_NAMES = {
     "3leg": [
+        "2-Phase (Main, Stem)",
+        "Protected E-left",
+        "Split phasing (E, S, W)"
+    ],
+    "4leg": [
         "2-Phase (permitted lefts)",
         "Protected NS lefts",
         "Protected EW lefts",
         "4-Phase protected lefts",
         "Split phasing (N, E, S, W)"
-    ],
-    "4leg": [
-        "2-Phase (Main, Stem)",
-        "Protected E-left",
-        "Split phasing (E, S, W)"
     ]
 }
 N_PLANS = {k: len(v) for k, v in PLANS.items()}
@@ -221,7 +221,7 @@ def _core(scenario: Scenario, design: Design, detail: bool, enforce: bool = True
                 specs.append(("TR", L + T + R, design.thru_lanes[a]))
         else:
             if L > 0:
-                specs.append(("L"), L, design.left_lanes[a])
+                specs.append(("L", L, design.left_lanes[a]))
             if T + R > 0:
                 specs.append(("TR", T + R, design.thru_lanes[a]))
 

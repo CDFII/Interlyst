@@ -8,7 +8,7 @@ from sim.delay_model import ACTIVE, APPROACHES, Design, Scenario, intergreen
 COLORS = {
     "ROAD":     "#4a4f57",
     "FILLER":   "#5f656f",
-    "GRASS":    "#dde5d6",
+    "GRASS":    "#a3d17a",
     "HATCH":    "#cfd4da",
     "WHITE":    "#f4f4f4",
     "YELLOW":   "#f5c200",
@@ -21,15 +21,23 @@ SIGNAL_COLORS = {
     "RED":      "#e03a3a"
 }
 PHASE_COLORS = {
-    1:          "#4c9f70",
-    2:          "#3d7ea6",
-    3:          "#a66cc4",
-    4:          "#d9822b"
+    0:          "#4c9f70",
+    1:          "#3d7ea6",
+    2:          "#a66cc4",
+    3:          "#d9822b"
 }
 
 # -- METHODS --
-def _pt(a, u, v, cs, cy):
-    pass
+def _pt(a: int, u, v, cx, cy):
+    if a == 0:
+        return (cx + u, cy - v)
+    if a == 1:
+        return (cx + v, cy + u)
+    if a == 2:
+        return (cx - u, cy + v)
+
+    return (cx - v, cy - u)
+
 
 def lane_moves(left_lanes, thru_lanes, flow):
     L, T, R = flow
@@ -62,14 +70,14 @@ def arm_geometry(scenario: Scenario, design: Design):
 
     return n_in, n_out, fill
 
-def build_scenario(scenario: Scenario, design: Design, states: dict | None = None, size: int = 560, lw: int = 18):
+def build_scenario(scenario: Scenario, design: Design, states: dict | None = None, size: int = 560, lane_width: int = 20):
     cx = cy = size / 2
     active = ACTIVE[scenario.layout]
     n_in, n_out, fill = arm_geometry(scenario, design)
-    out_w = [(fill[a] + n_out[a]) * lw for a in range(4)]
+    out_w = [(fill[a] + n_out[a]) * lane_width for a in range(4)]
 
-    xs          = [-n_in[0] * lw, out_w[0], -out_w[2], n_in[2] * lw]
-    ys          = [-n_in[1] * lw, out_w[1], -out_w[3], n_in[3] * lw]
+    xs          = [-n_in[0] * lane_width, out_w[0], -out_w[2], n_in[2] * lane_width]
+    ys          = [-n_in[1] * lane_width, out_w[1], -out_w[3], n_in[3] * lane_width]
     x_left      = min(x for a, x in zip((0, 0, 2, 2), xs) if a in active)
     x_right     = max(x for a, x in zip((0, 0, 2, 2), xs) if a in active)
     y_top       = min(y for a, y in zip((1, 1, 3, 3), ys) if a in active)
@@ -84,7 +92,7 @@ def build_scenario(scenario: Scenario, design: Design, states: dict | None = Non
 
     P = []
 
-    def rect(a, u0, u1, va, vb, fill):
+    def rect(a: int, u0, u1, va, vb, fill: str):
         (x0, y0), (x1, y1) = _pt(a, u0, va, cx, cy), _pt(a, u1, vb, cx, cy)
         P.append({
             "type":     "rect",
@@ -93,7 +101,7 @@ def build_scenario(scenario: Scenario, design: Design, states: dict | None = Non
             "outline":  None
         })
 
-    def line(a, points, fill, width=2):
+    def line(a: int, points, fill: str, width: int = 2):
         P.append({
             "type":     "line",
             "points":   [_pt(a, u, v, cx, cy) for u, v in points],
@@ -101,7 +109,7 @@ def build_scenario(scenario: Scenario, design: Design, states: dict | None = Non
             "width":    width
         })
 
-    def poly(a, points, fill):
+    def poly(a: int, points, fill: str):
         P.append({
             "type":     "poly",
             "points":   [_pt(a, u, v, cx, cy) for u, v in points],
@@ -116,7 +124,7 @@ def build_scenario(scenario: Scenario, design: Design, states: dict | None = Non
         "outline":  None
     })
     for a in active:
-        rect(a, -n_in[a] * lw, out_w[a], v0[a] - 1, edge, COLORS["ROAD"])
+        rect(a, -n_in[a] * lane_width, out_w[a], v0[a] - 1, edge, COLORS["ROAD"])
     P.append({
         "type":     "rect",
         "box":      (cx + x_left, cy + y_top, cx + x_right, cy + y_bottom),
@@ -126,7 +134,7 @@ def build_scenario(scenario: Scenario, design: Design, states: dict | None = Non
 
     for a in active:
         if fill[a] > 0:
-            w = fill[a] * lw
+            w = fill[a] * lane_width
             rect(a, 0, w, v0[a], edge, COLORS["FILLER"])
             v = v0[a] + 2
 
@@ -138,23 +146,23 @@ def build_scenario(scenario: Scenario, design: Design, states: dict | None = Non
     for a in active:
         sv = v0[a] + (14 if scenario.pedestrian else 3)     # Stop-line distance
         if scenario.pedestrian:
-            u = -n_in[a] * lw
-            while u < n_out[a] * lw:
-                rect(a, u + 1, min(u + 6, n_out[a] * lw), v0[a] + 2, v0[a] + 11, COLORS["WHITE"])
-                u += 12
+            u = -n_in[a] * lane_width
+            while u < n_out[a] * lane_width:
+                rect(a, u + 1, min(u + 5, n_out[a] * lane_width), v0[a] + 2, v0[a] + 11, COLORS["WHITE"])
+                u += 10
 
         line(a, [(0, sv), (0, edge)], COLORS["YELLOW"], 2) # Centre line
         if fill[a] > 0:
-            line(a, [(fill[a] * lw, v0[a]), (fill[a] * lw, edge)], COLORS["YELLOW"], 2)
+            line(a, [(fill[a] * lane_width, v0[a]), (fill[a] * lane_width, edge)], COLORS["YELLOW"], 2)
 
         for index in range(1, n_in[a]):
             v = sv + 8
             while v < edge - 4:
-                line(a, [(-index, * lw, v), (-index * lw, min(v + 10, edge))], COLORS["WHITE"], 1)
+                line(a, [(-index * lane_width, v), (-index * lane_width, min(v + 10, edge))], COLORS["WHITE"], 1)
                 v += 20
 
         for index in range(1, n_out[a]):
-            u = (fill[a] + index) * lw
+            u = (fill[a] + index) * lane_width
             v = sv + 8
             while v < edge - 4:
                 line(a, [(u, v), (u, min(v + 10, edge))], COLORS["WHITE"], 1)
@@ -164,10 +172,10 @@ def build_scenario(scenario: Scenario, design: Design, states: dict | None = Non
         nl, nt = design.left_lanes[a], design.thru_lanes[a]
         groups = []
         if nl > 0:
-            groups.append(("L", -nl * lw + 2, -2))
-            groups.append(("TR", -(nl + nt) * lw + 2, -nl * lw - 2))
+            groups.append(("L", -nl * lane_width + 2, -2))
+            groups.append(("TR", -(nl + nt) * lane_width + 2, -nl * lane_width - 2))
         else:
-            groups.append(("TR", -nt * lw + 2, -2))
+            groups.append(("TR", -nt * lane_width + 2, -2))
 
         for kind, u0, u1 in groups:
             color = SIGNAL_COLORS[states[(a, kind)]] if states and (a, kind) in states else COLORS["WHITE"]
@@ -175,19 +183,19 @@ def build_scenario(scenario: Scenario, design: Design, states: dict | None = Non
 
         # Lane arrows
         for index, moves in enumerate(lane_moves(nl, nt, scenario.flows[a])):
-            u, va = -(index + 0.50) * lw, sv + 32
+            u, va = -(index + 0.50) * lane_width, sv + 32
             if "T" in moves:
                 line(a, [(u, va + 12), (u, va - 2)], COLORS["ARROW"], 2)
                 poly(a, [(u, va - 9), (u - 4, va - 2), (u + 4, va - 2)], COLORS["ARROW"])
             if "L" in moves:
-                line(a, [(u, va + 12), (u, va + 3), (u + 7, va + 3)], COLORS["ARROW"], 2)
-                poly(a, [(u + 14, va + 3), (u + 7, va - 1), (u + 7, va + 7)], COLORS["ARROW"])
+                line(a, [(u, va + 12), (u, va + 4), (u + 3, va + 3)], COLORS["ARROW"], 2)
+                poly(a, [(u + 10, va + 3), (u + 3, va - 1), (u + 3, va + 7)], COLORS["ARROW"])
             if "R" in moves:
-                line(a, [(u, va + 12), (u, va + 3), (u - 7, va + 3)], COLORS["ARROW"], 2)
-                poly(a, [(u - 14, va + 3), (u - 7, va - 1), (u - 7, va + 7)], COLORS["ARROW"])
+                line(a, [(u, va + 12), (u, va + 4), (u - 3, va + 3)], COLORS["ARROW"], 2)
+                poly(a, [(u - 10, va + 3), (u - 3, va - 1), (u - 3, va + 7)], COLORS["ARROW"])
 
         # Labels for traffic volume, for each incoming direction
-        x, y = _pt(a, -n_in[a] * lw / 2, edge - 34, cx, cy)
+        x, y = _pt(a, -n_in[a] * lane_width / 2, edge - 34, cx, cy)
         total = int(scenario.flows[a].sum())
         P.append({
             "type":     "rect",

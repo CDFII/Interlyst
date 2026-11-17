@@ -110,7 +110,7 @@ class Recommendation:
 class Recommender:
     # Holds the trained model, if one exists
 
-    def __init__(self, torch_ckpt="model/checkpoint.pt", sk_path="model/sklearn_model.pkl"):
+    def __init__(self, torch_ckpt="output/checkpoint.pt", sk_path="output/sklearn_model.pkl"):
         self.predictor, self.model_name, self.load_error = None, None, None
 
         if os.path.exists(torch_ckpt):

@@ -4,6 +4,7 @@
 # Imports
 import argparse, pandas
 
+from data.datasaver import save_dataframe
 from data.generate import features_from_dataframe, row_to_scenario
 from model.codec import decode_design
 from sim.delay_model import evaluate
@@ -54,11 +55,11 @@ def summarize(dataframe: pandas.DataFrame, ai: pandas.DataFrame) -> pandas.DataF
     fast = data["speed_kmh"] >= 60
 
     subsets = {
-        "all": pandas.Series(True, index=data.index),
+        "all":                              pandas.Series(True, index=data.index),
         "easy (no heavy lefts, < 60 km/h)": ~(heavy_left | fast),
-        "heavy lefts (>= 200 veh/h)": heavy_left,
-        "fast_road (>= 60 km/h)": fast,
-        "heavy load (v/c >= 0.8)": data["max_x_opt"]
+        "heavy lefts (>= 200 veh/h)":       heavy_left,
+        "fast_road (>= 60 km/h)":           fast,
+        "heavy load (v/c >= 0.8)":          data["max_x_opt"] >= 0.80
     }
 
     rows = []
@@ -84,19 +85,21 @@ def summarize(dataframe: pandas.DataFrame, ai: pandas.DataFrame) -> pandas.DataF
 
     return pandas.DataFrame(rows).set_index("subset")
 
-def report(dataframe: pandas.DataFrame, predictor, name: str = "AI", save_to: str | None = None) -> pandas.DataFrame:
+def report(dataframe: pandas.DataFrame, predictor, name: str = "AI", save_as: str | None = None) -> pandas.DataFrame:
     ai = evaluate_ai(dataframe, predictor)
     table = summarize(dataframe, ai)
 
-    print(f"\n <REPORT: {name}: {len(dataframe)} held-out scenarios>")
+    print(f"\n[REPORT] {name}: {len(dataframe)} held-out scenarios>")
     print(table.round(1).to_string())
-    print("[REPAIR STATS]:")
+    print("\n[REPAIR STATS]:")
     for index, (name, value_key) in REPORT_VALUES.items():
         print(f"\t{name}: {ai[value_key].mean():.1%}")
 
-    if save_to:
-        table.round(2).to_csv(save_to)
-        print(f"Saved to {save_to}")
+    if save_as:
+        save_dataframe(table.round(2), save_as)
+        #table.round(2).to_csv(save_to)
+        #print(f"Saved to {save_to}")
+        print(f"\nReport saved at 'output/{save_as}'")
 
     return table
 
@@ -104,11 +107,16 @@ if __name__ == "__main__":
     from model.model import TorchPredictor
 
     arg_parser = argparse.ArgumentParser()
-    arg_parser.add_argument("--csv", default="data/dataset.csv")
-    arg_parser.add_argument("--ckpt", default="model/checkpoint.pt")
-    arg_parser.add_argument("--out", default="eval/result.csv")
+    arg_parser.add_argument("--csv", default="output/dataset.csv")
+    arg_parser.add_argument("--ckpt", default="output/checkpoint.pt")
+    arg_parser.add_argument("--out", default="result.csv")
 
     args = arg_parser.parse_args()
     data = pandas.read_csv(args.csv)
     pred = TorchPredictor.load(args.ckpt)
-    report(data.iloc[pred.split["test"]], pred, "neural network", args.out)
+    report(
+        data.iloc[pred.split["test"]], 
+        pred, 
+        "neural network", 
+        args.out
+    )

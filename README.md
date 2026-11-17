@@ -7,17 +7,17 @@ Quick start:
 pip install -r requirements.txt
 
 # 2. Generate sample data for training
-python -m data.generate --n 20000 --workers 8 --out data/dataset.csv
+python -m data.generate --n 20000 --workers 8 --out output/dataset.csv
 
-# 2a. Simple model training
-python -m model.sklearn_baseline --csv data/dataset.csv
+# 3a. Simple model training
+python -m model.sklearn_baseline --csv output/dataset.csv
 
-# 2b. Or more capable model training
-python -m model.train --csv data/dataset.csv --epochs 150
-python -m eval.compare --csv data/dataset.csv --ckpt model/checkpoint.pt
+# 3b. Or more capable model training
+python -m model.train --csv output/dataset.csv --epochs 150
+python -m eval.compare --csv output/dataset.csv --ckpt output/checkpoint.pt
 ```
 
 You can launch visual editor with or without training the model, but expect worse results in optimizer:
 ```
-python -m gui.app
+python -m interface.app
 ```

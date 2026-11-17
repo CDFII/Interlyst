@@ -19,7 +19,7 @@ MAX_PHASES = 4
 def encode_labels(dataframe: pandas.DataFrame) -> dict:
     left = numpy.stack([dataframe[f"left_{A}"].to_numpy() for A in APPROACHES], 1).astype(numpy.int64)
     thru = numpy.stack([dataframe[f"thru_{A}"].to_numpy() for A in APPROACHES], 1).astype(numpy.int64) - 1
-    missing = (dataframe["layout"].ton_numpy() == "3leg")[:, None] & (numpy.arange(4) == 0)[None, :]
+    missing = (dataframe["layout"].to_numpy() == "3leg")[:, None] & (numpy.arange(4) == 0)[None, :]
 
     left[missing] = IGNORE
     thru[missing] = IGNORE
@@ -29,7 +29,7 @@ def encode_labels(dataframe: pandas.DataFrame) -> dict:
         "plan": dataframe["plan"].to_numpy(numpy.int64),
         "left": left,
         "thru": thru,
-        "n_phase": (greens > 0).sum(1).astype(numpy.int64),
+        "n_ph": (greens > 0).sum(1).astype(numpy.int64),
         "frac": (greens / greens.sum(1, keepdims=True)).astype(numpy.float32),
         "cycle": ((dataframe["cycle"].to_numpy(float) - MIN_CYCLE) / (MAX_CYCLE - MIN_CYCLE)).astype(numpy.float32),
         "delay": (numpy.log1p(dataframe["delay_opt"].to_numpy(float)) / 4.00).astype(numpy.float32)
@@ -41,7 +41,7 @@ def split_indices(n: int, seed: int = 0, value: float = 0.10, test: float = 0.10
     return {
         "test": permutation[:n_test],
         "value": permutation[n_test:n_test + n_value],
-        "train": permutation[n_test + n_value]
+        "train": permutation[n_test + n_value:]
     }
 
 def oracle_outputs(dataframe: pandas.DataFrame) -> dict:

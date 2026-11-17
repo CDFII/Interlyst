@@ -109,12 +109,12 @@ def refine_greens(scenario: Scenario, design: Design, steps={8.00, 4.00, 2.00, 1
 
                 c = objective(scenario, replace(design, greens=tuple(candidates)))
                 if c < best_c - 1e-9:
-                    best_g, best_c, improved = candidates, c, True
+                    best_greens, best_c, improved = candidates, c, True
 
             if not improved:
                 break
 
-    return best_c, replace(design, greens=tuple(best_g))
+    return best_c, replace(design, greens=tuple(best_greens))
 
 def optimize(scenario: Scenario):
     base_l, base_t = heuristic_lanes(scenario)

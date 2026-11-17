@@ -5,7 +5,9 @@
 import argparse, time, numpy, pandas, torch
 
 from torch.utils.data import DataLoader, TensorDataset
+from tqdm import tqdm
 
+from data.datasaver import save_dataframe
 from data.generate import features_from_dataframe
 from eval.compare import report
 from model.codec import encode_labels, split_indices
@@ -16,7 +18,7 @@ KEYS = ["plan", "left", "thru", "n_ph", "frac", "cycle", "delay"]
 
 # -- METHODS --
 def to_tensors(dataframe, device):
-    x = torch.as_tensor(features_from_dataframe(dataframe), deivce=device)
+    x = torch.as_tensor(features_from_dataframe(dataframe), device=device)
     y = encode_labels(dataframe)
     return x, {k: torch.as_tensor(y[k], device=device) for k in KEYS}
 
@@ -48,13 +50,13 @@ def run_epoch(net, loader, opt=None, sched=None):
 
 if __name__ == "__main__":
     arg_parser = argparse.ArgumentParser()
-    arg_parser.add_argument("--csv", default="data/dataset.csv")
-    arg_parser.add_argument("--epochs", type=int, default=150)
-    arg_parser.add_argument("--batch", type=int, default=256)
-    arg_parser.add_argument("--lr", type=float, default=2e-3)
-    arg_parser.add_argument("--hidden", type=int, default=256)
-    arg_parser.add_argument("--seed", type=int, default=0)
-    arg_parser.add_argument("--out", default="model/checkpoint.pt")
+    arg_parser.add_argument("--csv",                default="output/dataset.csv")
+    arg_parser.add_argument("--epochs", type=int,   default=150)
+    arg_parser.add_argument("--batch",  type=int,   default=256)
+    arg_parser.add_argument("--lr",     type=float, default=2e-3)                       # Learning Rate
+    arg_parser.add_argument("--hidden", type=int,   default=256)
+    arg_parser.add_argument("--seed",   type=int,   default=0)
+    arg_parser.add_argument("--out",                default="output/checkpoint.pt")
 
     args = arg_parser.parse_args()
     config = {
@@ -65,7 +67,17 @@ if __name__ == "__main__":
     device = "cuda" if torch.cuda.is_available() else "cpu"
     dataframe = pandas.read_csv(args.csv)
     split = split_indices(len(dataframe), args.seed)
-    print(f"\t{len(dataframe)} scenarios: {len(split["train"])} train\n\t{len(split["val"])} val\n\t{len(split["test"])} test\n\tDevice: {device}")
+
+    # Output some data prior training begins
+    split_headers = ("train", "value", "test")
+    arg_headers = ("epochs", "batch", "lr", "hidden", "seed")
+
+    print(f"\nDevice: {device}\nScenarios: {len(dataframe)}, overview:")
+    for index, header in enumerate(split_headers):      # Print training data splits
+        print(f" | {header}: {len(split[header])}")
+    print(f"Training settings:")
+    for index, header in enumerate(arg_headers):        # Print training arguments
+        print(f" | {header}: {getattr(args, header)}")
 
     data = {k: to_tensors(dataframe.iloc[index], device) for k, index in split.items() if k != "test"}
     loaders = {
@@ -74,8 +86,8 @@ if __name__ == "__main__":
             batch_size = args.batch,
             shuffle = True
         ),
-        "val": DataLoader(
-            TensorDataset(data["val"][0], *[data["val"][1][k] for k in KEYS]),
+        "value": DataLoader(
+            TensorDataset(data["value"][0], *[data["value"][1][k] for k in KEYS]),
             batch_size=1024
         )
     }
@@ -88,10 +100,12 @@ if __name__ == "__main__":
         total_steps = args.epochs * len(loaders["train"])
     )
 
+    pbar = tqdm(range(1, args.epochs + 1), desc="Training... 0_o")
     best, best_state, history, t0 = float("inf"), None, [], time.time()
-    for epoch in range(1, args.epochs + 1):
+
+    for epoch in pbar:
         tr, _ = run_epoch(net, loaders["train"], opt, sched)
-        va, parts = run_epoch(net, loaders["val"])
+        va, parts = run_epoch(net, loaders["value"])
         history.append({
             "epoch": epoch,
             "train_loss": tr,
@@ -102,8 +116,14 @@ if __name__ == "__main__":
         if va < best:
             best, best_state = va, {k: v.detach().cpu().clone() for k, v in net.state_dict().items()}
 
-        if epoch % 10 == 0 or epoch == 1:
-            print(f"epoch: {epoch:4d} | train: {tr:.4f} | val: {va:.4f}\n(plan: {parts["plan"]:.3f} | left: {parts["left"]:.3f} | thru: {parts["thru"]:.3f})\n{time.time() - t0:.0f}s", flush=True)
+        elapsed = time.time() - t0
+        pbar.set_postfix(
+            train   = f"{tr:.4f}",
+            val     = f"{va:.4f}",
+            plan    = f"{parts['plan']:.3f}",
+            left    = f"{parts['left']:.3f}",
+            thru    = f"{parts['thru']:.3f}"
+        )
 
     net.load_state_dict(best_state)
     torch.save({
@@ -111,12 +131,12 @@ if __name__ == "__main__":
         "config": config,
         "split": {k: v.tolist() for k, v in split.items()}
     }, args.out)
-    pandas.DataFrame(history).to_csv("model/history.csv", index=False)
-    print(f"Saved to {args.out} (best val loss {best:.4f} and model/history.csv)")
+    save_dataframe(pandas.DataFrame(history), "history.csv", "output", index=False)
+    print(f"Saved to {args.out} (best val loss {best:.4f} and output/history.csv)")
 
     report(
         dataframe.iloc[split["test"]],
         TorchPredictor(net, device),
         "neural network",
-        "eval/results.csv"
+        "results_torch.csv"
     )

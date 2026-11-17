@@ -46,7 +46,7 @@ class SklearnPredictor:
         out = {
             "plan_logits": _log_prob(self.plan, x, 5),
             "left_logits": numpy.zeros((n, 4, 3)),
-            "thru_logits": _log_prob(numpy.zeros(n, 4, 3))
+            "thru_logits": numpy.zeros((n, 4, 3))
         }
 
         for (h, a), clf in self.lanes.items():
@@ -59,9 +59,9 @@ class SklearnPredictor:
 
 if __name__ == "__main__":
     arg_parser = argparse.ArgumentParser()
-    arg_parser.add_argument("--csv", default="data/dataset.csv")
+    arg_parser.add_argument("--csv", default="output/dataset.csv")
     arg_parser.add_argument("--seed", type=int, default=0)
-    arg_parser.add_argument("--save", default="model/sklearn_model.pkl", help="GUI looks for the model from here")
+    arg_parser.add_argument("--save", default="output/sklearn_model.pkl", help="GUI looks for the model from here")
 
     args = arg_parser.parse_args()
     dataframe = pandas.read_csv(args.csv)
@@ -70,7 +70,7 @@ if __name__ == "__main__":
 
     import model.sklearn_baseline as importable
     model = importable.SklearnPredictor(seed=args.seed).fit(features_from_dataframe(train), encode_labels(train))
-    report(dataframe.iloc[split["test"]], model, "scikit-learn MLPs", "eval/results_sklearn.csv")
+    report(dataframe.iloc[split["test"]], model, "scikit-learn MLPs", "results_sklearn.csv")
     os.makedirs(os.path.dirname(args.save) or ".", exist_ok=True)
 
     with open(args.save, "wb") as f:

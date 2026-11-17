@@ -9,12 +9,15 @@ Run (from root):
 import argparse, time, numpy, pandas
 
 from multiprocessing import Pool
-
 from tqdm import tqdm
+
+from data.datasaver import save_dataframe
 from data.optimize import optimize
 from sim.baselines import fixed_design, webster_design
 from sim.delay_model import (
-    ACTIVE, APPROACHES, SAT_FLOW, TURNS, VALID_MOVES, Scenario, Result, evaluate
+    ACTIVE, APPROACHES, SAT_FLOW, TURNS, VALID_MOVES, 
+    Scenario, Result, 
+    evaluate
 )
 
 # Config
@@ -29,14 +32,14 @@ SPEEDS      = [30, 40, 50, 60, 70]
 SPEED_PROBS = [0.15, 0.20, 0.35, 0.20, 0.10]
 
 FLOW_COLS = [f"v_{A}{T}" for A in APPROACHES for T in TURNS]
-FEATURE_COLS = ["is_4leg", "speed", "lane_budget", "ped"] + FLOW_COLS
+FEATURE_COLS = ["is_4leg", "speed", "lane_budget", "pedestrian"] + FLOW_COLS
 
 MAX_X_ACCEPT            = 1.00  # Drops scenarios in which lane budget cannot be served, even at optimal
 PEDESTRIAN_CROSS_PROB   = 0.30  # Probability of intersection being pedestrian crossing
 HEAVY_LEFT_PROB         = 0.30  # Probability of lane meant more for left turns
 BURST_TRAFFIC_PROB      = 0.25  # Probability of one direction getting more traffic
 
-RESULT_PATH             = "data/dataset.csv"
+RESULT_FILENAME         = "dataset.csv"
 
 # -- METHODS --
 def _demand_index(flows, layout, budget):
@@ -91,22 +94,24 @@ def features_from_dataframe(dataframe: pandas.DataFrame) -> numpy.ndarray:
     x[:, 1]     = dataframe["speed_kmh"].to_numpy() / 100.00
     x[:, 2]     = dataframe["lane_budget"].to_numpy() / 4.00
     x[:, 3]     = dataframe["pedestrian"].to_numpy()
-    x[:, 4]     = dataframe[FLOW_COLS].to_numpy() / 1000.00
+    x[:, 4:]    = dataframe[FLOW_COLS].to_numpy() / 1000.00
     return x
 
 def row_to_scenario(row) -> Scenario:
     # Converts one row from .csv to Scenario object
     flows = numpy.array([row[column] for column in FLOW_COLS], dtype=float).reshape(4, 3)
     return Scenario(
-        str(row(["layout"]), flows, float(row["speed_kmh"])),
-        int(row(["lane_budget"])),
-        bool(row("pedestrian"))
+        str(row["layout"]), 
+        flows, 
+        float(row["speed_kmh"]),
+        int(row["lane_budget"]),
+        bool(row["pedestrian"])
     )
 
 def _make_row(scenario, design, result: Result):
     wd, fd                  = webster_design(scenario), fixed_design(scenario)
     web, fix                = evaluate(scenario, wd, enforce_rules=False), evaluate(scenario, fd, enforce_rules=False)
-    web_legal, fix_legal    = evaluate(scenario, wd).feasible, evaluate(scenario.fd).feasible
+    web_legal, fix_legal    = evaluate(scenario, wd).feasible, evaluate(scenario, fd).feasible
     row = {
         "layout":       scenario.layout,
         "speed_kmh":    scenario.speed_kmh,
@@ -151,7 +156,7 @@ def _work(args):
         return None
     return _make_row(scenario, design, result)
 
-def build_dataset(n, seed=0, workers=None, out=RESULT_PATH, save_every=2000):
+def build_dataset(n, seed=0, workers=None, out=RESULT_FILENAME, save_every=2000):
     rows, tried, t0 = [], 0, time.time()
     pool_size = int(n * 3) + 100
 
@@ -168,13 +173,14 @@ def build_dataset(n, seed=0, workers=None, out=RESULT_PATH, save_every=2000):
                 )
 
                 if len(rows) % save_every == 0:
-                    pandas.DataFrame(rows).to_csv(out, index=False)
+                    save_dataframe(pandas.DataFrame(rows), RESULT_FILENAME, "output", index=False)
+                    #pandas.DataFrame(rows).to_csv(out, index=False)
 
             if len(rows) >= n:
                 break
 
     dataframe = pandas.DataFrame(rows)
-    dataframe.to_csv(out, index=False)
+    save_dataframe(dataframe, RESULT_FILENAME, "output", index=False)
     print(f"\nSaved {len(dataframe)} scenarios to {out} ({len(dataframe) / max(tried, 1):.0%} of generated scenarios were servable) in {time.time() - t0:.0f}s")
 
     if len(dataframe) < n:
@@ -188,7 +194,7 @@ if __name__ == "__main__":
     arg_parser.add_argument("--n",          type=int,   default=200)
     arg_parser.add_argument("--seed",       type=int,   default=0)
     arg_parser.add_argument("--workers",    type=int,   default=None)
-    arg_parser.add_argument("--out",                    default=RESULT_PATH)
+    arg_parser.add_argument("--out",                    default=RESULT_FILENAME)
 
     args    = arg_parser.parse_args()
     build_dataset(
