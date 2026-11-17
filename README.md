@@ -8,7 +8,13 @@ Small Python based editor for designing intersections (3-leg or 4-leg), with fea
 
 ## Quick start
 ```
-# 1. Install dependacies
+# (Optional, but recommended) Initialize virtual environment
+python -m venv .venv
+
+.venv/Scripts/activate      # For Windows
+source .venv/bin/activate   # For MacOs
+
+# 1. Install dependencies
 pip install -r requirements.txt
 
 # 2. Generate sample data for training
