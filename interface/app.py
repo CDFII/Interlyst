@@ -17,6 +17,8 @@ APP_NAME = "Interlyst"
 CANVAS_SIZE = 560
 TIMELINE_HEIGHT = 58
 
+FONT = "Helvetica"
+
 SCORE_COLORS = {
     "A":    "#1f9d3a",
     "B":    "#3fae3a",
@@ -81,7 +83,7 @@ class App:
 
         # Setting inputs
         # Junction settings
-        ttk.Label(left, text="1. Junction", font=("Helvetica", 11, "bold")).grid(row=0, column=0, columnspan=4, sticky="w")
+        ttk.Label(left, text="1. Junction", font=(FONT, 11, "bold")).grid(row=0, column=0, columnspan=4, sticky="w")
         ttk.Label(left, text="Speed limit (km/h)").grid(row=2, column=0, columnspan=2, sticky="w", **input_padding)
         ttk.Label(left, text="Max lanes per approach").grid(row=3, column=0, columnspan=2, sticky="w", **input_padding)
         ttk.Label(left, text="Layout").grid(row=1, column=0, columnspan=2, sticky="w", **input_padding)
@@ -93,7 +95,7 @@ class App:
         ttk.Checkbutton(left, text="Pedestrian crossings", variable=self.pedestrian).grid(row=4, column=0, columnspan=4, sticky="w", **input_padding)
 
         # Traffic flow settings
-        ttk.Label(left, text="2. Traffic flow (vehicles / hour)", font=("Helvetica", 11, "bold")).grid(row=5, column=0, columnspan=4, sticky="w", pady=(10, 0))
+        ttk.Label(left, text="2. Traffic flow (vehicles / hour)", font=(FONT, 11, "bold")).grid(row=5, column=0, columnspan=4, sticky="w", pady=(10, 0))
         ttk.Label(left, text="Examples").grid(row=11, column=0, sticky="w", padx=6, pady=(8, 0))
 
         for index, name in enumerate(("left", "through", "right")):
@@ -119,7 +121,7 @@ class App:
         if self.engine.load_error:
             model_note += f"\n{self.engine.load_error}"
 
-        ttk.Label(left, text="3. Model selection", font=("Helvetica", 11, "bold")).grid(row=13, column=0, columnspan=4, sticky="w", pady=(10, 0))
+        ttk.Label(left, text="3. Model selection", font=(FONT, 11, "bold")).grid(row=13, column=0, columnspan=4, sticky="w", pady=(10, 0))
         ttk.Label(left, text=model_note, wraplength=280, foreground="#555555").grid(row=18, column=0, columnspan=4, sticky="we", padx=6, pady=8)
 
         for index, (key, label) in enumerate(METHODS.items()):
@@ -149,11 +151,11 @@ class App:
         self.play_button.grid(row=2, column=0, pady=4)
 
         # Results
-        ttk.Label(right, text="Score", font=("Helvetica", 11, "bold")).grid(row=0, column=0, sticky="w")
-        ttk.Label(right, text="Comparison", font=("Helvetica", 11, "bold")).grid(row=4, column=0, sticky="w")
-        ttk.Label(right, text="Recommend design", font=("Helvetica", 11, "bold")).grid(row=6, column=0, sticky="w", pady=(6, 0))
+        ttk.Label(right, text="Score", font=(FONT, 11, "bold")).grid(row=0, column=0, sticky="w")
+        ttk.Label(right, text="Comparison", font=(FONT, 11, "bold")).grid(row=4, column=0, sticky="w")
+        ttk.Label(right, text="Recommend design", font=(FONT, 11, "bold")).grid(row=6, column=0, sticky="w", pady=(6, 0))
 
-        self.score_label = ttk.Label(right, text="-", font=("Helvetica", 34, "bold"))
+        self.score_label = ttk.Label(right, text="-", font=(FONT, 34, "bold"))
         self.stats_label = ttk.Label(right, text="Press 'Recommend design'", wraplength=360)
 
         self.score_label.grid(row=1, column=0, sticky="w")
@@ -322,7 +324,7 @@ class App:
             elif prim["type"] == "poly":
                 canvas.create_polygon(*[c for pt in prim["points"] for c in pt], fill=prim["fill"], outline="")
             elif prim["type"] == "text":
-                canvas.create_text(*prim["pos"], text=prim["text"], fill=prim["fill"], font=("Helvetica", prim["size"], "bold"))
+                canvas.create_text(*prim["pos"], text=prim["text"], fill=prim["fill"], font=(FONT, prim["size"], "bold"))
 
     def _draw(self):
         if self.rec is not None:

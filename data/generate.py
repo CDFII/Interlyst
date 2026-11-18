@@ -11,33 +11,19 @@ import argparse, time, numpy, pandas
 from multiprocessing import Pool
 from tqdm import tqdm
 
+from services.config import SETTINGS
 from data.datasaver import save_dataframe
 from data.optimize import optimize
 from sim.baselines import fixed_design, webster_design
 from sim.delay_model import (
     ACTIVE, APPROACHES, SAT_FLOW, TURNS, VALID_MOVES, 
-    Scenario, Result, 
+    Scenario, Result, Design, 
     evaluate
 )
 
 # Config
-
-# Determines traffic by hour (0.0-1.0, peak = 1.0)
-DIURNAL = numpy.array([
-    0.12, 0.08, 0.06, 0.06, 0.10, 0.25, 0.55, 0.90, 1.00, 0.75, 0.65, 0.68, # 1-12h
-    0.72, 0.70, 0.72, 0.82, 0.95, 1.00, 0.85, 0.60, 0.45, 0.35, 0.27, 0.18  # 13-24h
-])
-
-SPEEDS      = [30, 40, 50, 60, 70]
-SPEED_PROBS = [0.15, 0.20, 0.35, 0.20, 0.10]
-
 FLOW_COLS = [f"v_{A}{T}" for A in APPROACHES for T in TURNS]
 FEATURE_COLS = ["is_4leg", "speed", "lane_budget", "pedestrian"] + FLOW_COLS
-
-MAX_X_ACCEPT            = 1.00  # Drops scenarios in which lane budget cannot be served, even at optimal
-PEDESTRIAN_CROSS_PROB   = 0.30  # Probability of intersection being pedestrian crossing
-HEAVY_LEFT_PROB         = 0.30  # Probability of lane meant more for left turns
-BURST_TRAFFIC_PROB      = 0.25  # Probability of one direction getting more traffic
 
 RESULT_FILENAME         = "dataset.csv"
 
@@ -53,15 +39,15 @@ def random_scenario(rng: numpy.random.Generator) -> Scenario:
     while True:
         layout      = str(rng.choice(["3leg", "4leg"]))
         hour        = rng.uniform(0, 24)
-        f_hour      = float(numpy.interp(hour, numpy.arange(25), numpy.append(DIURNAL, DIURNAL[0])))
-        speed       = float(rng.choice(SPEEDS, p=SPEED_PROBS))
+        f_hour      = float(numpy.interp(hour, numpy.arange(25), numpy.append(SETTINGS.data_gen_settings.diurnal, SETTINGS.data_gen_settings.diurnal[0])))
+        speed       = float(rng.choice(SETTINGS.traffic_settings.speeds, p=SETTINGS.traffic_settings.speed_probs))
         lane_budget = int(rng.choice([2, 3, 4], p=[0.30, 0.40, 0.30]))
-        pedestrian  = bool(rng.random() < PEDESTRIAN_CROSS_PROB)
+        pedestrian  = bool(rng.random() < SETTINGS.data_gen_settings.pedestrian_cross_prob)
 
         peak_load   = rng.uniform(0.70, 1.40)
         minor_ratio = rng.uniform(0.15, 0.80)
         main_axis   = "EW" if layout == "3leg" else str(rng.choice(["NS", "EW"]))
-        heavy_left  = rng.random() < HEAVY_LEFT_PROB
+        heavy_left  = rng.random() < SETTINGS.data_gen_settings.heavy_left_prob
         alpha       = (7, 9, 2) if heavy_left else (2, 14, 2)                           # Dirichlet distribution; On heavy left turns, model prefers left (ofc) otherwise prefers going straigh ahead.
 
         mask        = VALID_MOVES[layout]
@@ -73,7 +59,7 @@ def random_scenario(rng: numpy.random.Generator) -> Scenario:
             share           = numpy.where(mask[active], rng.dirichlet(alpha), 0.00)
             flows[active]   = volume * share / share.sum()
 
-        if rng.random() < BURST_TRAFFIC_PROB:
+        if rng.random() < SETTINGS.data_gen_settings.burst_traffic_prob:
             flows[int(rng.choice(ACTIVE[layout]))] *= rng.uniform(1.5, 2.5)
 
         # Scale load so that it follows natural load (daytime has more traffic unlike night time)
@@ -108,7 +94,7 @@ def row_to_scenario(row) -> Scenario:
         bool(row["pedestrian"])
     )
 
-def _make_row(scenario, design, result: Result):
+def _make_row(scenario: Scenario, design: Design, result: Result):
     wd, fd                  = webster_design(scenario), fixed_design(scenario)
     web, fix                = evaluate(scenario, wd, enforce_rules=False), evaluate(scenario, fd, enforce_rules=False)
     web_legal, fix_legal    = evaluate(scenario, wd).feasible, evaluate(scenario, fd).feasible
@@ -152,7 +138,7 @@ def _work(args):
     scenario        = random_scenario(rng)
     design, result  = optimize(scenario)
 
-    if not result.feasible or result.max_x > MAX_X_ACCEPT:
+    if not result.feasible or result.max_x > SETTINGS.data_gen_settings.max_x_accept:
         return None
     return _make_row(scenario, design, result)
 

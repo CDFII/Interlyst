@@ -7,6 +7,7 @@ import argparse, time, numpy, pandas, torch
 from torch.utils.data import DataLoader, TensorDataset
 from tqdm import tqdm
 
+from services.config import SETTINGS
 from data.datasaver import save_dataframe
 from data.generate import features_from_dataframe
 from eval.compare import report
@@ -50,12 +51,12 @@ def run_epoch(net, loader, opt=None, sched=None):
 
 if __name__ == "__main__":
     arg_parser = argparse.ArgumentParser()
+    arg_parser.add_argument("--epochs", type=int,   default=SETTINGS.ai_settings.epochs)
+    arg_parser.add_argument("--batch",  type=int,   default=SETTINGS.ai_settings.batch)
+    arg_parser.add_argument("--lr",     type=float, default=SETTINGS.ai_settings.lr)
+    arg_parser.add_argument("--hidden", type=int,   default=SETTINGS.ai_settings.hidden)
+    arg_parser.add_argument("--seed",   type=int,   default=SETTINGS.ai_settings.seed)
     arg_parser.add_argument("--csv",                default="output/dataset.csv")
-    arg_parser.add_argument("--epochs", type=int,   default=150)
-    arg_parser.add_argument("--batch",  type=int,   default=256)
-    arg_parser.add_argument("--lr",     type=float, default=2e-3)                       # Learning Rate
-    arg_parser.add_argument("--hidden", type=int,   default=256)
-    arg_parser.add_argument("--seed",   type=int,   default=0)
     arg_parser.add_argument("--out",                default="output/checkpoint.pt")
 
     args = arg_parser.parse_args()
@@ -107,9 +108,9 @@ if __name__ == "__main__":
         tr, _ = run_epoch(net, loaders["train"], opt, sched)
         va, parts = run_epoch(net, loaders["value"])
         history.append({
-            "epoch": epoch,
-            "train_loss": tr,
-            "val_loss": va,
+            "epoch":        epoch,
+            "train_loss":   tr,
+            "val_loss":     va,
             **{f"val_{k}": v for k, v in parts.items()}
         })
 

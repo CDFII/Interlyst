@@ -123,7 +123,7 @@ class Recommender:
         if self.predictor is None and os.path.exists(sk_path):
             try:
                 with open(sk_path, "rb") as f:
-                    self.predictor, self.model_name = pickle.load(f), "cikit-learn MLPs"
+                    self.predictor, self.model_name = pickle.load(f), "scikit-learn MLPs"
             except Exception as e:
                 self.load_error = f"couldn't load {sk_path}: {e}"
 
